@@ -1,6 +1,7 @@
 package hello.json;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.amqp.core.Binding;
@@ -19,6 +20,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
@@ -27,20 +29,20 @@ import java.util.concurrent.TimeUnit;
 @SpringBootApplication
 public class ApplicationJson {
 
-    static final String topicExchangeName = "hello-json-exchange";
+    static final String topicExchangeName = "payment-exchange";
 
-    static final String queueName = "hello-json-1";
+    static final String queuePayments = "payment.q";
 
-    static final String queueName2 = "hello-json-2";
+    static final String queueAll = "all.event.q";
 
     @Bean
     Queue queue() {
-        return new Queue(queueName, false);
+        return new Queue(queuePayments, false);
     }
 
     @Bean
-    Queue queue2() {
-        return new Queue(queueName2, false);
+    Queue queueAllEvents() {
+        return new Queue(queueAll, false);
     }
 
     @Bean
@@ -49,13 +51,13 @@ public class ApplicationJson {
     }
 
     @Bean
-    Binding binding(Queue queue, TopicExchange exchange) {
-        return BindingBuilder.bind(queue).to(exchange).with("foo.bar.#");
+    Binding bindingPayments(Queue queue, TopicExchange exchange) {
+        return BindingBuilder.bind(queue).to(exchange).with("foo.payment.#");
     }
 
     @Bean
-    Binding binding2(Queue queue2, TopicExchange exchange) {
-        return BindingBuilder.bind(queue2).to(exchange).with("foo.bar.#");
+    Binding bindingAll(Queue queueAllEvents, TopicExchange exchange) {
+        return BindingBuilder.bind(queueAllEvents).to(exchange).with("foo.#");
     }
 
 
@@ -64,7 +66,7 @@ public class ApplicationJson {
             MessageListenerAdapter listenerAdapter) {
         SimpleMessageListenerContainer container = new SimpleMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
-        container.setQueueNames(queueName);
+        container.setQueueNames(queuePayments);
 
         Jackson2JsonMessageConverter jsonConverter = jsonConverter();
         listenerAdapter.setMessageConverter(jsonConverter);
@@ -85,6 +87,7 @@ public class ApplicationJson {
         DefaultClassMapper classMapper = new DefaultClassMapper();
         Map<String, Class<?>> idClassMapping = new HashMap<>();
         idClassMapping.put("foo", Foo.class);
+        idClassMapping.put("payment", Payment.class);
         classMapper.setIdClassMapping(idClassMapping);
         classMapper.setTrustedPackages("hello.json");
         return classMapper;
@@ -107,7 +110,7 @@ class Receiver {
 
     private CountDownLatch latch = new CountDownLatch(1);
 
-    public void receiveMessage(Foo message) {
+    public void receiveMessage(Payment message) {
         System.out.println("Received <" + message + ">");
         latch.countDown();
     }
@@ -135,8 +138,14 @@ class Runner implements CommandLineRunner {
         System.out.println("Sending message...");
         rabbitTemplate.convertAndSend(
                 ApplicationJson.topicExchangeName,
-                "foo.bar.baz",
-                new Foo("Hello from RabbitMQ!")
+                "foo.payment.wire",
+                Payment.builder()
+                        .accountFrom("PARX1")
+                        .accountTo("PARX2")
+                        .amount(new BigDecimal(100).setScale(2))
+                        .customer("1")
+                        .currency("EUR")
+                        .build()
         );
 
         receiver.getLatch().await(10000, TimeUnit.MILLISECONDS);
@@ -150,5 +159,27 @@ class Runner implements CommandLineRunner {
 class Foo {
     String message;
 }
+
+@Builder
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+class Payment {
+    String customer;
+    String accountFrom;
+    String accountTo;
+    BigDecimal amount;
+    String currency;
+}
+
+/**
+ * {
+ * customer: 1,
+ * accountFrom: IBAN,
+ * accountTo: IBAN,
+ * amount: 100,
+ * currency: EUR
+ * }
+ */
 
 
