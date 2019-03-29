@@ -1,0 +1,6 @@
+spring:
+  rabbitmq:
+    host: mayer.kotov.lv
+    port: 5672
+    username: guest
+    password: guest
