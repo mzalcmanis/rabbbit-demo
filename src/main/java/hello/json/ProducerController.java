@@ -36,8 +36,8 @@ class ProducerController {
     public ResponseEntity<String> randomPayment() {
 
         return sendToRabbitExchange(Payment.builder()
-                .accountFrom("PARX1" + RandomStringUtils.randomNumeric(10))
-                .accountTo("PARX2" + RandomStringUtils.randomNumeric(10))
+                .accountFrom("IBAN1" + RandomStringUtils.randomNumeric(10))
+                .accountTo("IBAN1" + RandomStringUtils.randomNumeric(10))
                 .amount(new BigDecimal(100).setScale(2))
                 .customer("1")
                 .currency("EUR")
