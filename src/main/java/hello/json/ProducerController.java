@@ -29,41 +29,33 @@ class ProducerController {
     @PostMapping("/payment")
     public ResponseEntity<String> payment(@RequestBody Payment payment) {
 
+        return sendToRabbitExchange(payment);
+    }
+
+    @PostMapping("/random-payment")
+    public ResponseEntity<String> randomPayment() {
+
+        return sendToRabbitExchange(Payment.builder()
+                .accountFrom("PARX1" + RandomStringUtils.randomNumeric(10))
+                .accountTo("PARX2" + RandomStringUtils.randomNumeric(10))
+                .amount(new BigDecimal(100).setScale(2))
+                .customer("1")
+                .currency("EUR")
+                .build());
+    }
+
+    private ResponseEntity<String> sendToRabbitExchange(@RequestBody Payment payment) {
         try {
             jsonRabbitTemplate.convertAndSend(
                     RabbitConfig.TOPIC_EXCHANGE_NAME,
                     "event.payment",
                     payment
             );
-        } catch (AmqpException e){
+        } catch (AmqpException e) {
             log.error(e.getMessage(), e);
             return ResponseEntity.badRequest().body(e.getMessage());
         }
 
         return ResponseEntity.ok("Payment event successfully submitted to exchange " + RabbitConfig.TOPIC_EXCHANGE_NAME);
     }
-
-    @PostMapping("/random-payment")
-    public ResponseEntity<String> randomPayment() {
-
-        try {
-            jsonRabbitTemplate.convertAndSend(
-                    RabbitConfig.TOPIC_EXCHANGE_NAME,
-                    "event.payment",
-                    Payment.builder()
-                            .accountFrom("PARX1" + RandomStringUtils.randomNumeric(10))
-                            .accountTo("PARX2" + RandomStringUtils.randomNumeric(10))
-                            .amount(new BigDecimal(100).setScale(2))
-                            .customer("1")
-                            .currency("EUR")
-                            .build()
-            );
-        } catch (AmqpException e){
-            log.error(e.getMessage(), e);
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
-
-        return ResponseEntity.ok("Payment event successfully submitted to exchange " + RabbitConfig.TOPIC_EXCHANGE_NAME);
-    }
-
 }
