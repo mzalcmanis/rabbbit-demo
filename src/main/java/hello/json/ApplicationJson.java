@@ -52,12 +52,12 @@ public class ApplicationJson {
 
     @Bean
     Binding bindingPayments(Queue queue, TopicExchange exchange) {
-        return BindingBuilder.bind(queue).to(exchange).with("foo.payment.#");
+        return BindingBuilder.bind(queue).to(exchange).with("event.payment.#");
     }
 
     @Bean
     Binding bindingAll(Queue queueAllEvents, TopicExchange exchange) {
-        return BindingBuilder.bind(queueAllEvents).to(exchange).with("foo.#");
+        return BindingBuilder.bind(queueAllEvents).to(exchange).with("event.#");
     }
 
 
@@ -138,7 +138,7 @@ class Runner implements CommandLineRunner {
         System.out.println("Sending message...");
         rabbitTemplate.convertAndSend(
                 ApplicationJson.topicExchangeName,
-                "foo.payment.wire",
+                "event.payment",
                 Payment.builder()
                         .accountFrom("PARX1")
                         .accountTo("PARX2")
